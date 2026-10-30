@@ -7,8 +7,8 @@ description: >-
 license: Apache-2.0
 metadata:
   author: tazolabs
-  version: "1.0.0"
-  sdk-version: "0.1.1"
+  version: "1.0.1"
+  sdk-version: "0.1.2"
   api-version: "v1"
 ---
 
@@ -41,7 +41,7 @@ idempotency recovery, and verification failures.
 ## Set up and discover
 
 - Use Python 3.11+ and the project's dependency manager or virtual environment.
-  The examples and helpers are tested with `tazo-sdk==0.1.1`.
+  The examples and helpers are tested with `tazo-sdk==0.1.2`.
 - Read the raw key from `TAZO_API_KEY`; the SDK adds `Bearer`. Keys are created
   by the user in the [Tazo console](https://app.tazolabs.com). If missing, have
   the user set it in their terminal or secret store. Do not request a key in chat,
@@ -65,6 +65,11 @@ transcripts or executions of tools named in the choices.
 For streaming, send raw mono 16 kHz signed little-endian PCM16, consume events
 concurrently with sending, obey `session.ready` limits, and observe
 `decision.finalized` followed by `session.closed` for a completed verification.
+SDK 0.1.2 defaults to `audio_scope="chunk"`: results cover new audio windows,
+and `max_turn_audio_ms=None` means no cumulative duration cap. Choose
+`audio_scope="turn"` explicitly for a final decision over the whole recording;
+obey any numeric duration limit. Continue pacing audio and respecting the
+per-message limit in either mode.
 Never replay a disconnected stream automatically.
 
 Resolve the helpers relative to **this installed skill directory**, not the
@@ -82,6 +87,7 @@ sync streaming, async upload, and async streaming for both `tazo-large` and
 `tazo-small`. `--models tazo-large` limits it to four cases. `--modes sync-upload`
 limits it to one mode per selected model. `--help` lists all options, including
 custom audio, API origin, expected choice, and a JSON report.
+The helper explicitly uses turn mode to check final coverage of the full sample.
 
 Run the operations that satisfy the user's request. Use the full verification
 suite when the user asks to check all modes; each case submits real inference

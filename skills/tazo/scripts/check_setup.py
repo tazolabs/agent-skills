@@ -45,7 +45,7 @@ def main() -> int:
 
     try:
         with Tazo(
-            # An explicitly empty environment value is rejected by SDK 0.1.1.
+            # An explicitly empty environment value is rejected by the SDK.
             # Health sends no Authorization header; this placeholder isn't sent.
             api_key=os.environ.get("TAZO_API_KEY", "").strip() or "unused-for-health",
             base_url=args.base_url,

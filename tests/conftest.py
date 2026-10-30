@@ -23,10 +23,11 @@ class FakeAPI:
     stream_failure: str | None = None
     upload_error: tuple[int, str] | None = None
     max_message_bytes: int = 998  # Exercise chunk adaptation and even byte boundaries.
-    max_turn_ms: int = 30000
+    max_turn_ms: int | None = 30000
     calls: list[tuple[str, str]] = field(default_factory=list)
     audio_messages: list[bytes] = field(default_factory=list)
     uploads: list[bytes] = field(default_factory=list)
+    stream_scopes: list[str] = field(default_factory=list)
 
     def decision(self, model):
         return {
@@ -115,6 +116,7 @@ class FakeAPI:
             return socket
         assert start["type"] == "session.start"
         assert len(start["questions"]) == 1
+        self.stream_scopes.append(start["audio_scope"])
         session_id = f"sess_{uuid4().hex}"
         await socket.send_json(
             {
@@ -125,7 +127,7 @@ class FakeAPI:
                 "config_revision": 1,
                 "input_audio": {"encoding": "pcm_s16le", "sample_rate_hz": 16000, "channels": 1},
                 "evaluation_interval_ms": 1000,
-                "max_turn_audio_ms": self.max_turn_ms,
+                "max_turn_audio_ms": None if start["audio_scope"] == "chunk" else self.max_turn_ms,
                 "max_audio_message_bytes": self.max_message_bytes,
                 "audio_scope": start["audio_scope"],
             }
