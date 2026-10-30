@@ -54,7 +54,7 @@ The default target is `https://api.tazolabs.com`.
 In your Python 3.11+ environment:
 
 ```sh
-python -m pip install 'tazo-sdk==0.1.1'
+python -m pip install 'tazo-sdk==0.1.2'
 ```
 
 For a repository checkout, run from its root:
@@ -84,6 +84,12 @@ real inference work; streaming can evaluate multiple windows. Narrow a run:
 python skills/tazo/scripts/verify.py \
   --models tazo-large --modes sync-upload --expected-choice get_weather
 ```
+
+Skill version **1.0.1** targets SDK **0.1.2**. The SDK now defaults to chunk
+streaming with no cumulative duration cap (`max_turn_audio_ms=None`). Choose
+`audio_scope="turn"` explicitly for a final decision over the whole recording;
+the verification helper does this. Numeric duration limits, message-size limits,
+and real-time pacing still apply where advertised.
 
 For your own mono 16 kHz PCM16 WAV, use `--audio ./request.wav`. The helper's
 question always tests weather routing. Omit `--expected-choice` for a contract
@@ -150,7 +156,7 @@ npx skills@latest add . --list
 ```
 
 CI runs these checks with Python 3.11 and 3.14 and validates CLI discovery.
-Tests exercise the published `tazo-sdk==0.1.1` against a local public-API double,
+Tests exercise the published `tazo-sdk==0.1.2` against a local public-API double,
 including all eight cases, semantic failures, missing/invalid keys, streaming
 disconnects, cleanup, and error redaction. They do not establish live model
 quality or provider availability. Before a release, run the live verification
@@ -168,7 +174,7 @@ npx skills@latest add /absolute/path/to/agent-skills --skill tazo --agent codex
 Keep the skill's `metadata.version` independent of the SDK version. When
 updating behavior, update that skill version, record the SDK version tested in
 `metadata.sdk-version`, run checks, and push reviewed changes to `main`.
-Optionally create a Git tag such as `v1.0.0` after the first release checks pass.
+Optionally create a Git tag such as `v1.0.1` after the release checks pass.
 The normal install command works as soon as the files are on the public default
 branch; an npm account, npm token, and `npm publish` are unnecessary.
 

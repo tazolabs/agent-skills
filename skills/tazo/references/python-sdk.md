@@ -5,12 +5,15 @@ Use the existing project's environment and dependency manager. For a new project
 ```sh
 python3 -m venv .venv
 source .venv/bin/activate
-python -m pip install 'tazo-sdk==0.1.1'
+python -m pip install 'tazo-sdk==0.1.2'
 ```
 
 On Windows activate `.venv\Scripts\Activate.ps1`. Python 3.11+ is required.
 The package is `tazo-sdk`; the import is `tazo`. Reuse a compatible installed
 version rather than replacing a project's lockfile without reason.
+SDK 0.1.2 supports the current nullable streaming duration limit and defaults to
+chunk mode. When upgrading an integration that needs whole-recording decisions,
+set `audio_scope="turn"` explicitly; see [streaming.md](streaming.md).
 
 The user creates a key at <https://app.tazolabs.com> and sets `TAZO_API_KEY`
 outside chat. Bash or Zsh can read it without terminal echo or putting

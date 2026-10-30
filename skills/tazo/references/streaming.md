@@ -10,6 +10,8 @@ and protocol messages; use the public `decisions.stream()` interface.
 1. Enter the streaming context. The SDK sends `session.start` and waits for
    `session.ready`. Inspect `session.ready` for the accepted format, maximum
    turn duration, maximum bytes per audio message, and evaluation interval.
+   `max_turn_audio_ms=None` means there is no cumulative duration cap; compare
+   duration against this field only when it is a number.
 2. Send binary raw signed little-endian PCM16, mono, 16 kHz. There are 32,000
    bytes per second. Do not send WAV headers, base64, stereo, or encoded MP3.
    Frames must be nonempty, even-length, and within the negotiated limits.
@@ -17,12 +19,22 @@ and protocol messages; use the public `decisions.stream()` interface.
    applications use a sender thread; async applications use concurrent tasks.
 4. `commit()` completes a turn. Consume `decision.finalized` before another
    turn. `decision.updated` is provisional; use its reported audio window.
-5. After the last final decision, call `finish()` and keep consuming until
-   `session.closed`. Context exit closes the socket even on errors.
+5. To stop, call `finish()` and keep consuming remaining decisions through
+   `session.closed`. You can finish with pending audio without a preceding
+   commit, or finish after the last committed final decision. Context exit
+   closes the socket even on errors.
 
-`audio_scope="turn"` evaluates cumulative turn audio; `"chunk"` evaluates new
-audio windows. Cumulative windows overlap, so do not sum their audio usage as
-unique recording duration. Each evaluation may consume account capacity.
+SDK 0.1.2 defaults to `audio_scope="chunk"`, which evaluates new audio windows.
+Its final event covers the latest window, and `max_turn_audio_ms` is `None` for
+continuous chunk streams. No periodic commits are required in this mode.
+Continue consuming events, pacing source audio, and obeying
+`max_audio_message_bytes`; unlimited total duration does not remove those limits.
+
+Set `audio_scope="turn"` explicitly to evaluate cumulative turn audio and obtain
+a final decision covering the whole recording. Earlier SDK versions used this
+mode by default. Numeric advertised duration limits still apply, so commit
+before exceeding them. Cumulative windows overlap; do not sum their audio usage
+as unique recording duration. Each evaluation may consume account capacity.
 Omit `evaluation_interval_ms` for the server default, or use an integer from
 100 through 30,000 ms. Respect the accepted ready limits and service feedback;
 do not hardcode account quotas.
@@ -36,10 +48,12 @@ A session's model stays fixed. Start a new session to change models.
 [../scripts/verify.py](../scripts/verify.py) includes complete `sync_stream`
 and `async_stream` implementations with producer/receiver cleanup, pacing,
 negotiated chunk limits, final audio coverage, and graceful closure checks.
+They explicitly select turn mode because their checks require full-recording
+coverage; preserve that choice when adapting a whole-recording verification.
 Use these functions as a reference when creating the user's integration;
 their question is specifically a weather-routing smoke test.
 
-For async code, the core pattern is:
+For an async whole-recording decision, the core pattern is:
 
 ```python
 import asyncio
@@ -84,7 +98,8 @@ async def stream_pcm(state, questions, pcm_chunks):
 ```
 
 The `pcm_chunks` callable receives `session.ready` and must check total duration
-and split PCM at even byte boundaries no larger than `max_audio_message_bytes`.
+when `max_turn_audio_ms is not None`, then split PCM at even byte boundaries
+no larger than `max_audio_message_bytes`.
 For a WAV source, `tazo.wav_chunks(path, chunk_ms=100)` strips the header and
 validates mono 16 kHz PCM16. It does not pace or resample. Ensure its chunks fit
 ready limits; the verification helper demonstrates adaptive chunking.

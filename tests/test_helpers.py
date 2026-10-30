@@ -14,6 +14,7 @@ import yaml
 from conftest import TEST_KEY
 from tazo import AsyncTazo, Tazo
 from tazo.streaming import AsyncStreamingSession, StreamingSession
+from tazo.types import SessionReady
 
 ROOT = Path(__file__).resolve().parents[1]
 SKILL = ROOT / "skills" / "tazo"
@@ -111,7 +112,7 @@ def test_all_eight_modes_use_installed_sdk_from_unrelated_directory(fake_api, tm
     )
     assert result.returncode == 0, result.stdout + result.stderr
     data = json.loads(report.read_text())
-    assert data["sdk_version"] == "0.1.1"
+    assert data["sdk_version"] == "0.1.2"
     assert data["passed"] == data["total"] == 8
     assert {(case["model"], case["mode"]) for case in data["results"]} == {
         (model, mode)
@@ -122,6 +123,7 @@ def test_all_eight_modes_use_installed_sdk_from_unrelated_directory(fake_api, tm
         case["decision"]["answers"]["action"]["choice"] == "get_weather" for case in data["results"]
     )
     assert len(fake_api.uploads) == 4
+    assert fake_api.stream_scopes == ["turn"] * 4
     assert all(audio.startswith(b"RIFF") for audio in fake_api.uploads)
     assert fake_api.audio_messages
     assert all(len(frame) <= 998 and len(frame) % 2 == 0 for frame in fake_api.audio_messages)
@@ -133,6 +135,31 @@ def test_all_eight_modes_use_installed_sdk_from_unrelated_directory(fake_api, tm
         "/v1/decisions/stream",
     }
     assert TEST_KEY not in result.stdout + result.stderr + report.read_text()
+
+
+@pytest.mark.parametrize("limit", [None, 65000, 30000])
+def test_verification_chunks_honor_nullable_and_numeric_duration_limits(verification, limit):
+    pcm = b"\x01\x00" * (16000 * 65)
+    audio = verification.Audio(filename="long.wav", wav=b"", pcm=pcm)
+    ready = SessionReady(
+        type="session.ready",
+        session_id="sess_test",
+        sequence=1,
+        model="tazo-large",
+        config_revision=1,
+        input_audio={"encoding": "pcm_s16le", "sample_rate_hz": 16000, "channels": 1},
+        evaluation_interval_ms=1000,
+        max_turn_audio_ms=limit,
+        max_audio_message_bytes=998,
+        audio_scope="chunk" if limit is None else "turn",
+    )
+    if limit is not None and limit < audio.duration_ms:
+        with pytest.raises(ValueError, match="turn limit"):
+            list(audio.chunks(ready))
+    else:
+        chunks = list(audio.chunks(ready))
+        assert b"".join(chunks) == pcm
+        assert all(0 < len(chunk) <= 998 and len(chunk) % 2 == 0 for chunk in chunks)
 
 
 @pytest.mark.parametrize("mode", ["sync-upload", "async-upload"])

@@ -19,11 +19,13 @@ submits audio. Resolve script paths relative to the installed skill directory.
 | `ConnectionError` / `TimeoutError` | Check origin/network/time budgets. An upload may have been accepted; recover using its retained key and original input. |
 | `StreamingError` / early disconnect | Inspect code/close code and whether a final result arrived. Do not automatically replay audio. |
 | `ProtocolError` | Capture sanitized request metadata and SDK version; compare the supported contract and report the mismatch. |
+| Old SDK rejects `max_turn_audio_ms: null`, or helper compares `None` with a number | Upgrade to SDK 0.1.2 and update the skill. A `None` streaming duration limit means no cumulative cap; retain numeric limit checks. |
+| Final streaming decision covers only the latest window | SDK 0.1.2 defaults to chunk mode. Use `audio_scope="turn"` for a whole-recording decision. |
 | Private package index returns 401 | Test with a command-scoped clean pip configuration below; preserve the user's global configuration. |
 
 ```sh
 env -u PIP_EXTRA_INDEX_URL -u PIP_INDEX_URL PIP_CONFIG_FILE=/dev/null \
-  python -m pip install --index-url https://pypi.org/simple/ 'tazo-sdk==0.1.1'
+  python -m pip install --index-url https://pypi.org/simple/ 'tazo-sdk==0.1.2'
 ```
 
 For SDK exceptions, retain class, `code`, `status_code`, `request_id`,
@@ -46,6 +48,8 @@ This uses the bundled 1.27-second weather WAV and runs all four modes for
 `Summary: 8/8 passed`. It validates health/discovery, response IDs/options,
 streaming final audio coverage, closure, and the expected choice. It submits
 real inference work. Do not run it automatically for every integration edit.
+Streaming cases explicitly select turn mode for full-recording coverage;
+they do not use the SDK's default chunk mode.
 
 For a smaller or custom check:
 
