@@ -78,10 +78,12 @@ relative to their own location. Use `--help` for all options.
 With no key, it can still check health. `--offline` makes no network requests
 and reports a missing key as an incomplete setup.
 
-`verify.py` sends the bundled weather WAV through four modes for each of
-`tazo-large` and `tazo-small`. Expect `Summary: 8/8 passed` with a working
-service and the expected weather decision. Cases run sequentially and submit
-real inference work; streaming can evaluate multiple windows. Narrow a run:
+`verify.py` discovers ready models supporting choice questions and sends the
+bundled weather WAV through four modes for each. Production currently advertises
+`tazo-large`, so expect `Summary: 4/4 passed` there with the expected weather
+decision. A deployment advertising two suitable models runs eight cases. Cases
+run sequentially and submit real inference work; streaming can evaluate multiple
+windows. Narrow a run:
 
 ```sh
 python skills/tazo/scripts/verify.py \
@@ -106,8 +108,10 @@ python skills/tazo/scripts/verify.py --models tazo-large \
 ```
 
 These two optional modes check committed sample bounds, absence of periodic
-decisions, and closure. The default verification remains eight cases. To test
-all six modes for both models (12 cases), pass all six names to `--modes`.
+decisions, and closure. The default verification remains four modes per
+discovered model. To test all six modes, pass all six names to `--modes`. Use
+`--models` to select
+specific models only when that deployment advertises them.
 
 For your own mono 16 kHz PCM16 WAV, use `--audio ./request.wav`. The helper's
 question always tests weather routing. Omit `--expected-choice` for a contract
@@ -193,7 +197,8 @@ npx skills@latest add . --list
 
 CI runs these checks with Python 3.11 and 3.14 and validates CLI discovery.
 Tests exercise the published `tazo-sdk==0.1.4` against a local public-API double,
-including all eight cases, semantic failures, missing/invalid keys, streaming
+including single-model production discovery, eight cases on a two-model API,
+semantic failures, missing/invalid keys, streaming
 disconnects, manual sample-range commits, periodic-event rejection, cleanup,
 and error redaction. They do not establish live model quality or provider
 availability. Before a release, run the live verification

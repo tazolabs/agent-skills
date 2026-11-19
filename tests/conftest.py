@@ -24,6 +24,7 @@ class FakeAPI:
     upload_error: tuple[int, str] | None = None
     max_message_bytes: int = 998  # Exercise chunk adaptation and even byte boundaries.
     max_turn_ms: int | None = 30000
+    model_names: tuple[str, ...] = ("tazo-large", "tazo-small")
     calls: list[tuple[str, str]] = field(default_factory=list)
     audio_messages: list[bytes] = field(default_factory=list)
     uploads: list[bytes] = field(default_factory=list)
@@ -81,7 +82,7 @@ class FakeAPI:
                                 "required_sample_rate_hz": 16000,
                             },
                         }
-                        for name in ("tazo-large", "tazo-small")
+                        for name in self.model_names
                     ]
                 }
             )

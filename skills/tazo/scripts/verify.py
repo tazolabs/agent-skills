@@ -430,7 +430,9 @@ def main() -> int:
         "--audio", type=Path, default=SAMPLE_AUDIO, help="Default: bundled weather WAV"
     )
     parser.add_argument("--base-url", default=DEFAULT_BASE_URL)
-    parser.add_argument("--models", nargs="+", default=["tazo-large", "tazo-small"])
+    parser.add_argument(
+        "--models", nargs="+", help="Default: discover ready models supporting choice questions"
+    )
     parser.add_argument("--modes", nargs="+", choices=MODES, default=list(DEFAULT_MODES))
     parser.add_argument("--expected-choice", choices=sorted(CHOICES))
     parser.add_argument(
@@ -442,7 +444,7 @@ def main() -> int:
         if not os.environ.get("TAZO_API_KEY", "").strip():
             raise ValueError("Set TAZO_API_KEY to a key created in the Tazo console.")
         args.base_url = validate_base_url(args.base_url)
-        if any(not model.strip() for model in args.models):
+        if args.models is not None and any(not model.strip() for model in args.models):
             raise ValueError("--models must contain nonblank model IDs.")
         if not math.isfinite(args.timeout) or args.timeout <= 0:
             raise ValueError("--timeout must be positive and finite.")
@@ -456,8 +458,21 @@ def main() -> int:
         parser.error(redact(str(error)))
     print(f"SDK {tazo.__version__} from {tazo.__file__}")
     print(f"Target: {args.base_url}; audio: {audio.duration_ms / 1000:.2f}s")
-    models = list(dict.fromkeys(args.models))
     try:
+        if args.models is None:
+            with Tazo(base_url=args.base_url, operation_timeout=args.timeout) as client:
+                if client.health.check().status != "ok":
+                    raise RuntimeError("Health check reported unavailable.")
+                models = [
+                    model.id
+                    for model in client.models.list().models
+                    if model.ready and "choice" in model.capabilities.question_types
+                ]
+            if not models:
+                raise RuntimeError("No ready model advertises choice questions.")
+        else:
+            models = list(dict.fromkeys(args.models))
+        print(f"Models: {', '.join(models)}")
         modes = list(dict.fromkeys(args.modes))
         results = verify(audio, models, args.base_url, args.timeout, args.expected_choice, modes)
         passed = sum(result.passed for result in results)
