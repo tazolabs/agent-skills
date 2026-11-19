@@ -90,7 +90,7 @@ python skills/tazo/scripts/verify.py \
   --models tazo-large --modes sync-upload --expected-choice get_weather
 ```
 
-Skill version **1.1.0** targets SDK **0.1.4**. The SDK now defaults to chunk
+Skill version **1.1.1** targets SDK **0.1.4**. The SDK now defaults to chunk
 streaming with no cumulative duration cap (`max_turn_audio_ms=None`). Choose
 `audio_scope="turn"` explicitly for a final decision over the whole recording;
 the verification helper does this. Numeric duration limits, message-size limits,
@@ -216,7 +216,7 @@ npx skills@latest add /absolute/path/to/agent-skills --skill tazo --agent codex
 Keep the skill's `metadata.version` independent of the SDK version. When
 updating behavior, update that skill version, record the SDK version tested in
 `metadata.sdk-version`, run checks, and push reviewed changes to `main`.
-Optionally create a Git tag such as `v1.1.0` after the release checks pass.
+Optionally create a Git tag such as `v1.1.1` after the release checks pass.
 The normal install command works as soon as the files are on the public default
 branch; an npm account, npm token, and `npm publish` are unnecessary.
 The CLI compares source/content state when checking for changes; bumping the

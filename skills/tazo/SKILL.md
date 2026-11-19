@@ -7,7 +7,7 @@ description: >-
 license: Apache-2.0
 metadata:
   author: tazolabs
-  version: "1.1.0"
+  version: "1.1.1"
   sdk-version: "0.1.4"
   api-version: "v1"
 ---
