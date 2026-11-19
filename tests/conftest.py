@@ -28,6 +28,8 @@ class FakeAPI:
     audio_messages: list[bytes] = field(default_factory=list)
     uploads: list[bytes] = field(default_factory=list)
     stream_scopes: list[str] = field(default_factory=list)
+    stream_modes: list[str] = field(default_factory=list)
+    commits: list[dict] = field(default_factory=list)
 
     def decision(self, model):
         return {
@@ -117,6 +119,11 @@ class FakeAPI:
         assert start["type"] == "session.start"
         assert len(start["questions"]) == 1
         self.stream_scopes.append(start["audio_scope"])
+        mode = start.get("evaluation_mode", "interval")
+        self.stream_modes.append(mode)
+        if mode == "manual":
+            assert start["audio_scope"] == "turn"
+            assert "evaluation_interval_ms" not in start
         session_id = f"sess_{uuid4().hex}"
         await socket.send_json(
             {
@@ -126,7 +133,9 @@ class FakeAPI:
                 "model": start["model"],
                 "config_revision": 1,
                 "input_audio": {"encoding": "pcm_s16le", "sample_rate_hz": 16000, "channels": 1},
-                "evaluation_interval_ms": 1000,
+                "evaluation_interval_ms": None if mode == "manual" else 1000,
+                "evaluation_mode": mode,
+                "audio_retention_ms": 60000 if mode == "manual" else None,
                 "max_turn_audio_ms": None if start["audio_scope"] == "chunk" else self.max_turn_ms,
                 "max_audio_message_bytes": self.max_message_bytes,
                 "audio_scope": start["audio_scope"],
@@ -140,6 +149,7 @@ class FakeAPI:
             elif message.type == WSMsgType.TEXT:
                 control = json.loads(message.data)
                 if control["type"] == "input.commit":
+                    self.commits.append(control)
                     if self.stream_failure == "disconnect":
                         await socket.close()
                         break
@@ -149,21 +159,33 @@ class FakeAPI:
                         )
                         await socket.close()
                         break
-                    await socket.send_json(
-                        {
-                            **self.decision(start["model"]),
-                            "type": "decision.finalized",
-                            "session_id": session_id,
-                            "sequence": 2,
-                            "turn_id": "turn_local",
-                            "config_revision": 1,
-                            "audio_start_ms": 0,
-                            "audio_end_ms": received / 32,
+                    final = {
+                        **self.decision(start["model"]),
+                        "type": "decision.finalized",
+                        "session_id": session_id,
+                        "sequence": 2,
+                        "turn_id": "turn_local",
+                        "config_revision": 1,
+                        "audio_start_ms": 0,
+                        "audio_end_ms": received / 32,
+                    }
+                    if mode == "manual":
+                        assert 0 <= control["audio_start_sample"] < control["audio_end_sample"]
+                        assert control["audio_end_sample"] <= received // 2
+                        final["input_audio_range"] = {
+                            "start_sample": control["audio_start_sample"],
+                            "end_sample": control["audio_end_sample"],
+                            "sample_rate_hz": 16000,
                         }
-                    )
+                        if self.stream_failure == "wrong-range":
+                            final["input_audio_range"]["end_sample"] -= 1
+                        if self.stream_failure == "periodic-decision":
+                            await socket.send_json({**final, "type": "decision.updated"})
+                            final["sequence"] = 3
+                    await socket.send_json(final)
                 elif control["type"] == "input.finish":
                     await socket.send_json(
-                        {"type": "session.closed", "session_id": session_id, "sequence": 3}
+                        {"type": "session.closed", "session_id": session_id, "sequence": 4}
                     )
                     await socket.close()
                     break

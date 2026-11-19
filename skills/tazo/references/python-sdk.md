@@ -5,15 +5,18 @@ Use the existing project's environment and dependency manager. For a new project
 ```sh
 python3 -m venv .venv
 source .venv/bin/activate
-python -m pip install 'tazo-sdk==0.1.2'
+python -m pip install 'tazo-sdk==0.1.4'
 ```
 
 On Windows activate `.venv\Scripts\Activate.ps1`. Python 3.11+ is required.
 The package is `tazo-sdk`; the import is `tazo`. Reuse a compatible installed
 version rather than replacing a project's lockfile without reason.
-SDK 0.1.2 supports the current nullable streaming duration limit and defaults to
+SDK 0.1.4 supports the current nullable streaming duration limit and defaults to
 chunk mode. When upgrading an integration that needs whole-recording decisions,
 set `audio_scope="turn"` explicitly; see [streaming.md](streaming.md).
+Use SDK 0.1.4 or newer for manual streaming triggers. Upgrade an older project
+dependency using its dependency manager and refresh its lockfile. Installing or
+updating the agent skill alone does not upgrade the Python package.
 
 The user creates a key at <https://app.tazolabs.com> and sets `TAZO_API_KEY`
 outside chat. Bash or Zsh can read it without terminal echo or putting
@@ -51,6 +54,8 @@ Choose a ready model and inspect `capabilities.question_types`, `max_questions`,
 `required_sample_rate_hz`. Do not infer capabilities from the model's name.
 The bundled verification targets `tazo-large` and `tazo-small`; general
 integrations should use current discovery results.
+Question-count limits are model-specific for uploads and streaming. Use the
+advertised `max_questions` rather than assuming every model accepts exactly one.
 
 ## Choice decision: sync and async
 

@@ -43,6 +43,9 @@ so references, scripts, license, and audio remain available.
 > Use the Tazo skill to verify sync upload, async upload, sync streaming, and
 > async streaming with the bundled sample. Save a JSON report locally.
 
+> Use Tazo manual streaming to trigger decisions at VAD utterance boundaries.
+> Keep sending audio while inference runs and use absolute sample ranges.
+
 The agent can install the SDK and create integration code in your project. For
 live decisions, you need Python 3.11+, network access, and a Tazo API key from
 the [Tazo console](https://app.tazolabs.com). Configure the raw key as
@@ -54,7 +57,7 @@ The default target is `https://api.tazolabs.com`.
 In your Python 3.11+ environment:
 
 ```sh
-python -m pip install 'tazo-sdk==0.1.2'
+python -m pip install 'tazo-sdk==0.1.4'
 ```
 
 For a repository checkout, run from its root:
@@ -85,11 +88,26 @@ python skills/tazo/scripts/verify.py \
   --models tazo-large --modes sync-upload --expected-choice get_weather
 ```
 
-Skill version **1.0.1** targets SDK **0.1.2**. The SDK now defaults to chunk
+Skill version **1.1.0** targets SDK **0.1.4**. The SDK now defaults to chunk
 streaming with no cumulative duration cap (`max_turn_audio_ms=None`). Choose
 `audio_scope="turn"` explicitly for a final decision over the whole recording;
 the verification helper does this. Numeric duration limits, message-size limits,
 and real-time pacing still apply where advertised.
+
+SDK 0.1.4 also supports custom triggers: open a stream with
+`audio_scope="turn", evaluation_mode="manual"`, omit the evaluation interval,
+and commit an explicit source sample range. See the
+[streaming reference](skills/tazo/references/streaming.md). Check both clients:
+
+```sh
+python skills/tazo/scripts/verify.py --models tazo-large \
+  --modes sync-manual-stream async-manual-stream \
+  --expected-choice get_weather --output ./tazo-manual-verification.json
+```
+
+These two optional modes check committed sample bounds, absence of periodic
+decisions, and closure. The default verification remains eight cases. To test
+all six modes for both models (12 cases), pass all six names to `--modes`.
 
 For your own mono 16 kHz PCM16 WAV, use `--audio ./request.wav`. The helper's
 question always tests weather routing. Omit `--expected-choice` for a contract
@@ -111,8 +129,9 @@ skills/tazo/
   references/python-sdk.md     Setup, sync/async uploads, typed results
   references/streaming.md      PCM format, concurrency, lifecycle, cleanup
   references/troubleshooting.md
+  references/updates.md        Skill/SDK updates and opt-in automation
   scripts/check_setup.py       Local prerequisites, health, and discovery
-  scripts/verify.py            Four-mode verification and JSON reports
+  scripts/verify.py            Four default modes plus two manual trigger modes
   scripts/_support.py          URL validation and credential redaction
   assets/weather.wav           Bundled weather-request recording
 tests/                         Local HTTP/WebSocket tests; no live key needed
@@ -132,9 +151,26 @@ and bundled sample are provided under [Apache-2.0](LICENSE).
 ```sh
 npx skills@latest list
 npx skills@latest check
-npx skills@latest update tazo
+# Choose the scope where Tazo was installed:
+npx --yes skills@latest update tazo --project --yes
+# Or:
+npx --yes skills@latest update tazo --global --yes
 npx skills@latest remove tazo
 ```
+
+**Updates are pulled, not pushed to users' computers.** New installations get
+the default branch's current skill. Existing installations stay as they are
+until the user runs an update, or opts into a scheduled update on their own
+machine. `@latest` updates the CLI used for the command; it is not a background
+skill updater. Reload the agent session after updating.
+
+For automatic updates of a personal global installation, configure the user's
+scheduler to run the global command above daily or before agent startup. Set
+up Node.js/`npx` on the scheduler's PATH and retain logs. For team projects,
+prefer scheduled update PRs that change the skill and `skills-lock.json`
+together. No automatic job is installed by this repository. See
+[the update guide](skills/tazo/references/updates.md) for details, untracked
+manual installs, and the separate Python dependency update.
 
 See the [skills CLI reference](https://github.com/vercel-labs/skills/blob/main/docs/commands.md)
 for installation scope, supported agents, and pinned Git sources. For a
@@ -156,10 +192,11 @@ npx skills@latest add . --list
 ```
 
 CI runs these checks with Python 3.11 and 3.14 and validates CLI discovery.
-Tests exercise the published `tazo-sdk==0.1.2` against a local public-API double,
+Tests exercise the published `tazo-sdk==0.1.4` against a local public-API double,
 including all eight cases, semantic failures, missing/invalid keys, streaming
-disconnects, cleanup, and error redaction. They do not establish live model
-quality or provider availability. Before a release, run the live verification
+disconnects, manual sample-range commits, periodic-event rejection, cleanup,
+and error redaction. They do not establish live model quality or provider
+availability. Before a release, run the live verification
 with a dedicated key from your own terminal and review the report.
 
 Validate the frontmatter with the official
@@ -174,9 +211,13 @@ npx skills@latest add /absolute/path/to/agent-skills --skill tazo --agent codex
 Keep the skill's `metadata.version` independent of the SDK version. When
 updating behavior, update that skill version, record the SDK version tested in
 `metadata.sdk-version`, run checks, and push reviewed changes to `main`.
-Optionally create a Git tag such as `v1.0.1` after the release checks pass.
+Optionally create a Git tag such as `v1.1.0` after the release checks pass.
 The normal install command works as soon as the files are on the public default
 branch; an npm account, npm token, and `npm publish` are unnecessary.
+The CLI compares source/content state when checking for changes; bumping the
+skill's metadata version alone is not an update delivery mechanism. Merging
+the release updates future installations. Existing users then run `update` or
+receive it through their own opt-in automation.
 
 ## Link from Mintlify
 
