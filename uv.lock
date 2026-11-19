@@ -952,7 +952,7 @@ wheels = [
 
 [[package]]
 name = "tazo-agent-skills-dev"
-version = "1.0.1"
+version = "1.1.0"
 source = { virtual = "." }
 
 [package.dev-dependencies]
@@ -972,21 +972,21 @@ dev = [
     { name = "pytest", specifier = ">=8,<10" },
     { name = "pyyaml", specifier = ">=6,<7" },
     { name = "ruff", specifier = ">=0.11,<1" },
-    { name = "tazo-sdk", specifier = "==0.1.2" },
+    { name = "tazo-sdk", specifier = "==0.1.4" },
 ]
 
 [[package]]
 name = "tazo-sdk"
-version = "0.1.2"
+version = "0.1.4"
 source = { registry = "https://pypi.org/simple/" }
 dependencies = [
     { name = "httpx" },
     { name = "pydantic" },
     { name = "websockets" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/55/1d/f69e43337156823390c0811804e5f82581c1ab066f5755905021296e7b1b/tazo_sdk-0.1.2.tar.gz", hash = "sha256:e095ca453ecf17fc5a9e0e4fcd6967e3bd485689508b076cd277ba48609fa662", size = 343495, upload-time = "2026-10-30T15:34:58.291Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/47/6a/730224cedb63528f71c9ce6a7258163e743a779849bdc900509a957a30aa/tazo_sdk-0.1.4.tar.gz", hash = "sha256:bd2cb8c1088a0b465108fb9faf1b0be938c4bb20c1e3b3ec1baa438d58d15c09", size = 351151, upload-time = "2026-11-19T16:17:43.432Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/cd/71/8d394e57c227fb576f3454f88a7f19896df99dafc330ca038d093e93def0/tazo_sdk-0.1.2-py3-none-any.whl", hash = "sha256:8ecff82ba5e365c017b4cbc04bc84e32c4c44378c3dd19bf957fb9e2bf8e5097", size = 27030, upload-time = "2026-10-30T15:34:56.77Z" },
+    { url = "https://files.pythonhosted.org/packages/2f/05/cc40b600564e7acc78e3536053295d82c68aab4fac13232d23ffa347c187/tazo_sdk-0.1.4-py3-none-any.whl", hash = "sha256:70342641d41aaff30b74f1fe391e8585cb0b0ec1e44d6d4937bc048f34f0e680", size = 27992, upload-time = "2026-11-19T16:17:42.222Z" },
 ]
 
 [[package]]

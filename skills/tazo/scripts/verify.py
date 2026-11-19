@@ -44,7 +44,8 @@ except ImportError:
         "Install tazo-sdk in this Python 3.11+ environment before verification."
     ) from None
 
-MODES = ("sync-upload", "sync-stream", "async-upload", "async-stream")
+DEFAULT_MODES = ("sync-upload", "sync-stream", "async-upload", "async-stream")
+MODES = (*DEFAULT_MODES, "sync-manual-stream", "async-manual-stream")
 SAMPLE_AUDIO = Path(__file__).resolve().parents[1] / "assets" / "weather.wav"
 
 STATE = "Route the spoken request to the weather tool when weather information is requested."
@@ -130,11 +131,22 @@ def validate_result(result: DecisionResponse, model: str, expected: str | None) 
         raise RuntimeError(f"Expected {expected}, received {answer.choice}.")
 
 
-def final_result(final: DecisionEvent | None, closed: bool, audio: Audio) -> DecisionEvent:
+def final_result(
+    final: DecisionEvent | None, closed: bool, audio: Audio, *, manual: bool = False
+) -> DecisionEvent:
     if final is None or not closed:
         raise RuntimeError("Streaming must produce decision.finalized and session.closed.")
     if final.audio_start_ms != 0 or abs(final.audio_end_ms - audio.duration_ms) > 1:
         raise RuntimeError("The final decision does not cover the complete recording.")
+    if manual:
+        bounds = final.input_audio_range
+        if (
+            bounds is None
+            or bounds.start_sample != 0
+            or bounds.end_sample != len(audio.pcm) // 2
+            or bounds.sample_rate_hz != 16000
+        ):
+            raise RuntimeError("The final decision does not match the committed source samples.")
     return final
 
 
@@ -160,7 +172,9 @@ async def async_upload(client: AsyncTazo, audio: Audio, model: str) -> DecisionR
     )
 
 
-def sync_stream(client: Tazo, audio: Audio, model: str, timeout: float) -> DecisionResponse:
+def sync_stream(
+    client: Tazo, audio: Audio, model: str, timeout: float, *, manual: bool = False
+) -> DecisionResponse:
     final = None
     closed = False
     failures: queue.Queue[Exception] = queue.Queue()
@@ -170,7 +184,8 @@ def sync_stream(client: Tazo, audio: Audio, model: str, timeout: float) -> Decis
         state=STATE,
         questions=QUESTIONS,
         audio_scope="turn",
-        evaluation_interval_ms=1000,
+        evaluation_mode="manual" if manual else "interval",
+        evaluation_interval_ms=None if manual else 1000,
         event_timeout=timeout,
     ) as session:
         # Validate all negotiated limits before starting the sender thread.
@@ -184,7 +199,10 @@ def sync_stream(client: Tazo, audio: Audio, model: str, timeout: float) -> Decis
                     session.send_audio(chunk)
                     if stopped.wait(len(chunk) / 32000):
                         return
-                session.commit()
+                if manual:
+                    session.commit(audio_start_sample=0, audio_end_sample=len(audio.pcm) // 2)
+                else:
+                    session.commit()
             except Exception as error:
                 failures.put(error)
                 session.close()  # Unblock the receiver when the producer fails.
@@ -198,6 +216,8 @@ def sync_stream(client: Tazo, audio: Audio, model: str, timeout: float) -> Decis
                     raise TimeoutError("The sync streaming verification exceeded its time budget.")
                 if isinstance(event, ErrorEvent):
                     raise RuntimeError(f"Stream error: {event.error.code}: {event.error.message}")
+                if manual and isinstance(event, DecisionEvent) and event.type == "decision.updated":
+                    raise RuntimeError("Manual streaming must not produce periodic decisions.")
                 if isinstance(event, DecisionEvent) and event.type == "decision.finalized":
                     if final is not None:
                         raise RuntimeError("Received more than one final decision for this turn.")
@@ -213,11 +233,11 @@ def sync_stream(client: Tazo, audio: Audio, model: str, timeout: float) -> Decis
                 raise RuntimeError("Audio sender did not shut down.")
             if not failures.empty():
                 raise failures.get_nowait()
-    return final_result(final, closed, audio)
+    return final_result(final, closed, audio, manual=manual)
 
 
 async def async_stream(
-    client: AsyncTazo, audio: Audio, model: str, timeout: float
+    client: AsyncTazo, audio: Audio, model: str, timeout: float, *, manual: bool = False
 ) -> DecisionResponse:
     final = None
     closed = False
@@ -228,7 +248,8 @@ async def async_stream(
             state=STATE,
             questions=QUESTIONS,
             audio_scope="turn",
-            evaluation_interval_ms=1000,
+            evaluation_mode="manual" if manual else "interval",
+            evaluation_interval_ms=None if manual else 1000,
             event_timeout=timeout,
         ) as session,
     ):
@@ -238,13 +259,18 @@ async def async_stream(
             for chunk in chunks:
                 await session.send_audio(chunk)
                 await asyncio.sleep(len(chunk) / 32000)
-            await session.commit()
+            if manual:
+                await session.commit(audio_start_sample=0, audio_end_sample=len(audio.pcm) // 2)
+            else:
+                await session.commit()
 
         async def receive() -> None:
             nonlocal final, closed
             async for event in session:
                 if isinstance(event, ErrorEvent):
                     raise RuntimeError(f"Stream error: {event.error.code}: {event.error.message}")
+                if manual and isinstance(event, DecisionEvent) and event.type == "decision.updated":
+                    raise RuntimeError("Manual streaming must not produce periodic decisions.")
                 if isinstance(event, DecisionEvent) and event.type == "decision.finalized":
                     if final is not None:
                         raise RuntimeError("Received more than one final decision for this turn.")
@@ -252,12 +278,12 @@ async def async_stream(
                     await session.finish()
                 if isinstance(event, SessionClosed):
                     closed = True
-            final_result(final, closed, audio)
+            final_result(final, closed, audio, manual=manual)
 
         async with asyncio.TaskGroup() as group:
             group.create_task(send())
             group.create_task(receive())
-    return final_result(final, closed, audio)
+    return final_result(final, closed, audio, manual=manual)
 
 
 @dataclass
@@ -341,7 +367,7 @@ async def async_cases(
             raise RuntimeError("Async health check reported unavailable.")
         check_models(await client.models.list(), models, audio)
         for model in models:
-            for mode in ("async-upload", "async-stream"):
+            for mode in ("async-upload", "async-stream", "async-manual-stream"):
                 if mode not in modes:
                     continue
                 print(f"RUN  {model} / {mode}", flush=True)
@@ -351,7 +377,9 @@ async def async_cases(
                     if mode == "async-upload":
                         operation = async_upload(client, audio, model)
                     else:
-                        operation = async_stream(client, audio, model, timeout)
+                        operation = async_stream(
+                            client, audio, model, timeout, manual=mode == "async-manual-stream"
+                        )
                     decision = await operation
                     results.append(checked_case(model, mode, started, decision, expected))
                 except Exception as error:
@@ -374,14 +402,21 @@ def verify(
                 raise RuntimeError("Sync health check reported unavailable.")
             check_models(client.models.list(), models, audio)
             for model in models:
-                for mode in ("sync-upload", "sync-stream"):
+                for mode in ("sync-upload", "sync-stream", "sync-manual-stream"):
                     if mode not in modes:
                         continue
                     print(f"RUN  {model} / {mode}", flush=True)
                     operation = (
                         partial(sync_upload, client, audio, model)
                         if mode == "sync-upload"
-                        else partial(sync_stream, client, audio, model, timeout)
+                        else partial(
+                            sync_stream,
+                            client,
+                            audio,
+                            model,
+                            timeout,
+                            manual=mode == "sync-manual-stream",
+                        )
                     )
                     results.append(record(model, mode, time.monotonic(), operation, expected))
     if any(mode.startswith("async-") for mode in modes):
@@ -396,7 +431,7 @@ def main() -> int:
     )
     parser.add_argument("--base-url", default=DEFAULT_BASE_URL)
     parser.add_argument("--models", nargs="+", default=["tazo-large", "tazo-small"])
-    parser.add_argument("--modes", nargs="+", choices=MODES, default=list(MODES))
+    parser.add_argument("--modes", nargs="+", choices=MODES, default=list(DEFAULT_MODES))
     parser.add_argument("--expected-choice", choices=sorted(CHOICES))
     parser.add_argument(
         "--timeout", type=float, default=180, help="HTTP budget/stream wait seconds"

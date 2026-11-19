@@ -19,13 +19,17 @@ submits audio. Resolve script paths relative to the installed skill directory.
 | `ConnectionError` / `TimeoutError` | Check origin/network/time budgets. An upload may have been accepted; recover using its retained key and original input. |
 | `StreamingError` / early disconnect | Inspect code/close code and whether a final result arrived. Do not automatically replay audio. |
 | `ProtocolError` | Capture sanitized request metadata and SDK version; compare the supported contract and report the mismatch. |
-| Old SDK rejects `max_turn_audio_ms: null`, or helper compares `None` with a number | Upgrade to SDK 0.1.2 and update the skill. A `None` streaming duration limit means no cumulative cap; retain numeric limit checks. |
-| Final streaming decision covers only the latest window | SDK 0.1.2 defaults to chunk mode. Use `audio_scope="turn"` for a whole-recording decision. |
+| Old SDK rejects `max_turn_audio_ms: null`, or helper compares `None` with a number | Upgrade to SDK 0.1.4 and update the skill. A `None` streaming duration limit means no cumulative cap; retain numeric limit checks. |
+| Final streaming decision covers only the latest window | SDK 0.1.4 defaults to chunk mode. Use `audio_scope="turn"` for a whole-recording decision. |
+| `commit()` rejects sample bounds or manual stream arguments | Upgrade the project's Python dependency to SDK 0.1.4+ and update the skill separately. Manual mode requires turn scope and no interval. |
+| Manual stream sends no decisions | This is expected until an explicit sample-range commit. `finish()` does not evaluate an uncommitted manual tail. |
+| `audio_range_not_received` / `audio_range_expired` | Use absolute source sample bounds within audio already sent and still retained; inspect `audio_retention_ms`. Never reset the source clock after a final. |
+| `invalid_audio_range` / `turn_finalizing` | Use ordered, nonoverlapping ranges and wait for `decision.finalized` before the next commit. Audio may continue while inference runs. |
 | Private package index returns 401 | Test with a command-scoped clean pip configuration below; preserve the user's global configuration. |
 
 ```sh
 env -u PIP_EXTRA_INDEX_URL -u PIP_INDEX_URL PIP_CONFIG_FILE=/dev/null \
-  python -m pip install --index-url https://pypi.org/simple/ 'tazo-sdk==0.1.2'
+  python -m pip install --index-url https://pypi.org/simple/ 'tazo-sdk==0.1.4'
 ```
 
 For SDK exceptions, retain class, `code`, `status_code`, `request_id`,
@@ -50,6 +54,11 @@ streaming final audio coverage, closure, and the expected choice. It submits
 real inference work. Do not run it automatically for every integration edit.
 Streaming cases explicitly select turn mode for full-recording coverage;
 they do not use the SDK's default chunk mode.
+
+To check manual triggers as well, run with
+`--modes sync-manual-stream async-manual-stream`. This adds two optional modes
+per model; it does not change the default eight-case check. The manual checks
+also validate the final `input_audio_range` and reject periodic decisions.
 
 For a smaller or custom check:
 

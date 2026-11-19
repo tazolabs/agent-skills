@@ -112,7 +112,7 @@ def test_all_eight_modes_use_installed_sdk_from_unrelated_directory(fake_api, tm
     )
     assert result.returncode == 0, result.stdout + result.stderr
     data = json.loads(report.read_text())
-    assert data["sdk_version"] == "0.1.2"
+    assert data["sdk_version"] == "0.1.4"
     assert data["passed"] == data["total"] == 8
     assert {(case["model"], case["mode"]) for case in data["results"]} == {
         (model, mode)
@@ -135,6 +135,66 @@ def test_all_eight_modes_use_installed_sdk_from_unrelated_directory(fake_api, tm
         "/v1/decisions/stream",
     }
     assert TEST_KEY not in result.stdout + result.stderr + report.read_text()
+
+
+def test_manual_modes_commit_exact_samples_and_report_final_ranges(fake_api, tmp_path):
+    report = tmp_path / "manual.json"
+    result = run_helper(
+        "verify.py",
+        "--base-url",
+        fake_api.base_url,
+        "--modes",
+        "sync-manual-stream",
+        "async-manual-stream",
+        "--expected-choice",
+        "get_weather",
+        "--timeout",
+        "5",
+        "--output",
+        report,
+        cwd=tmp_path,
+    )
+    assert result.returncode == 0, result.stdout + result.stderr
+    data = json.loads(report.read_text())
+    assert data["passed"] == data["total"] == 4
+    assert not fake_api.uploads
+    assert fake_api.stream_scopes == ["turn"] * 4
+    assert fake_api.stream_modes == ["manual"] * 4
+    with wave.open(str(SKILL / "assets" / "weather.wav")) as audio:
+        frames = audio.getnframes()
+    assert (
+        fake_api.commits
+        == [{"type": "input.commit", "audio_start_sample": 0, "audio_end_sample": frames}] * 4
+    )
+    for case in data["results"]:
+        assert case["decision"]["input_audio_range"] == {
+            "start_sample": 0,
+            "end_sample": frames,
+            "sample_rate_hz": 16000,
+        }
+    assert TEST_KEY not in result.stdout + result.stderr + report.read_text()
+
+
+@pytest.mark.parametrize("mode", ["sync-manual-stream", "async-manual-stream"])
+@pytest.mark.parametrize("failure", ["wrong-range", "periodic-decision"])
+def test_manual_modes_reject_wrong_ranges_and_periodic_decisions(fake_api, mode, failure):
+    fake_api.stream_failure = failure
+    result = run_helper(
+        "verify.py",
+        "--base-url",
+        fake_api.base_url,
+        "--models",
+        "tazo-large",
+        "--modes",
+        mode,
+        "--timeout",
+        "5",
+    )
+    assert result.returncode == 1, result.stdout + result.stderr
+    assert "Summary: 0/1 passed" in result.stdout
+    assert (
+        "committed source samples" if failure == "wrong-range" else "periodic decisions"
+    ) in result.stdout
 
 
 @pytest.mark.parametrize("limit", [None, 65000, 30000])
@@ -186,7 +246,9 @@ def test_mode_selection_and_wrong_semantic_answer(fake_api, tmp_path, mode):
     assert "Expected get_weather, received NO_TOOL" in data["results"][0]["error"]
 
 
-@pytest.mark.parametrize("mode", ["sync-stream", "async-stream"])
+@pytest.mark.parametrize(
+    "mode", ["sync-stream", "async-stream", "sync-manual-stream", "async-manual-stream"]
+)
 @pytest.mark.parametrize("failure", ["disconnect", "missing-final"])
 def test_stream_requires_final_and_graceful_closure(fake_api, mode, failure):
     fake_api.stream_failure = failure
@@ -252,7 +314,8 @@ def test_invalid_origins_rejected_without_echoing_credentials(url):
     assert url not in result.stdout + result.stderr
 
 
-def test_sync_sender_failure_stops_worker(fake_api, verification, monkeypatch):
+@pytest.mark.parametrize("manual", [False, True])
+def test_sync_sender_failure_stops_worker(fake_api, verification, monkeypatch, manual):
     def fail(self, audio):
         raise RuntimeError("producer_failed")
 
@@ -260,12 +323,17 @@ def test_sync_sender_failure_stops_worker(fake_api, verification, monkeypatch):
     with Tazo(api_key=TEST_KEY, base_url=fake_api.base_url) as client:
         with pytest.raises(RuntimeError, match="producer_failed"):
             verification.sync_stream(
-                client, verification.load_audio(verification.SAMPLE_AUDIO), "tazo-large", 2
+                client,
+                verification.load_audio(verification.SAMPLE_AUDIO),
+                "tazo-large",
+                2,
+                manual=manual,
             )
     assert not any(t.name == "tazo-audio-sender" for t in threading.enumerate())
 
 
-def test_async_receiver_failure_cancels_sender(fake_api, verification, monkeypatch):
+@pytest.mark.parametrize("manual", [False, True])
+def test_async_receiver_failure_cancels_sender(fake_api, verification, monkeypatch, manual):
     import asyncio
 
     async def fail(self):
@@ -277,7 +345,11 @@ def test_async_receiver_failure_cancels_sender(fake_api, verification, monkeypat
         async with AsyncTazo(api_key=TEST_KEY, base_url=fake_api.base_url) as client:
             with pytest.raises(ExceptionGroup) as error:
                 await verification.async_stream(
-                    client, verification.load_audio(verification.SAMPLE_AUDIO), "tazo-large", 2
+                    client,
+                    verification.load_audio(verification.SAMPLE_AUDIO),
+                    "tazo-large",
+                    2,
+                    manual=manual,
                 )
             assert "receiver_failed" in verification.error_message(error.value)
         assert not [

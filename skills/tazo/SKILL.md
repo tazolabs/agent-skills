@@ -7,8 +7,8 @@ description: >-
 license: Apache-2.0
 metadata:
   author: tazolabs
-  version: "1.0.1"
-  sdk-version: "0.1.2"
+  version: "1.1.0"
+  sdk-version: "0.1.4"
   api-version: "v1"
 ---
 
@@ -37,11 +37,13 @@ authentication, uploaded decisions, capabilities, and result handling. Read
 [references/streaming.md](references/streaming.md) when implementing streaming.
 Use [references/troubleshooting.md](references/troubleshooting.md) for errors,
 idempotency recovery, and verification failures.
+Read [references/updates.md](references/updates.md) when installing or updating
+the skill, or when the user asks about automatic updates.
 
 ## Set up and discover
 
 - Use Python 3.11+ and the project's dependency manager or virtual environment.
-  The examples and helpers are tested with `tazo-sdk==0.1.2`.
+  The examples and helpers are tested with `tazo-sdk==0.1.4`.
 - Read the raw key from `TAZO_API_KEY`; the SDK adds `Bearer`. Keys are created
   by the user in the [Tazo console](https://app.tazolabs.com). If missing, have
   the user set it in their terminal or secret store. Do not request a key in chat,
@@ -65,12 +67,22 @@ transcripts or executions of tools named in the choices.
 For streaming, send raw mono 16 kHz signed little-endian PCM16, consume events
 concurrently with sending, obey `session.ready` limits, and observe
 `decision.finalized` followed by `session.closed` for a completed verification.
-SDK 0.1.2 defaults to `audio_scope="chunk"`: results cover new audio windows,
+SDK 0.1.4 defaults to `audio_scope="chunk"`: results cover new audio windows,
 and `max_turn_audio_ms=None` means no cumulative duration cap. Choose
 `audio_scope="turn"` explicitly for a final decision over the whole recording;
 obey any numeric duration limit. Continue pacing audio and respecting the
 per-message limit in either mode.
 Never replay a disconnected stream automatically.
+
+For VAD, utterance boundaries, or custom triggers, use SDK 0.1.4+ with
+`audio_scope="turn", evaluation_mode="manual"` and omit the interval. Trigger
+`commit(audio_start_sample=..., audio_end_sample=...)` only for audio already
+sent. Bounds are absolute source samples from connection start, end exclusive;
+at 16 kHz, multiply seconds by 16,000. Keep receiving while audio continues,
+wait for `decision.finalized` before the next ordered, nonoverlapping commit,
+and respect `session.ready.audio_retention_ms` and the selected-range duration
+limit. Manual `finish()` does not evaluate uncommitted audio. See the streaming
+reference for sync/async examples and error handling.
 
 Resolve the helpers relative to **this installed skill directory**, not the
 user's working directory. Use its absolute path with the project's Python:
@@ -88,6 +100,9 @@ sync streaming, async upload, and async streaming for both `tazo-large` and
 limits it to one mode per selected model. `--help` lists all options, including
 custom audio, API origin, expected choice, and a JSON report.
 The helper explicitly uses turn mode to check final coverage of the full sample.
+To check custom triggers, select `--modes sync-manual-stream async-manual-stream`.
+These additional modes check the returned source sample range and reject
+periodic decisions; the default four modes stay unchanged.
 
 Run the operations that satisfy the user's request. Use the full verification
 suite when the user asks to check all modes; each case submits real inference
