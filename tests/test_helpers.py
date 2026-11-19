@@ -175,6 +175,26 @@ def test_manual_modes_commit_exact_samples_and_report_final_ranges(fake_api, tmp
     assert TEST_KEY not in result.stdout + result.stderr + report.read_text()
 
 
+def test_default_verification_discovers_single_model_production(fake_api, tmp_path):
+    fake_api.model_names = ("tazo-large",)
+    report = tmp_path / "production.json"
+    result = run_helper(
+        "verify.py", "--base-url", fake_api.base_url, "--timeout", "5", "--output", report
+    )
+    assert result.returncode == 0, result.stdout + result.stderr
+    data = json.loads(report.read_text())
+    assert data["passed"] == data["total"] == 4
+    assert {case["model"] for case in data["results"]} == {"tazo-large"}
+
+
+def test_explicit_unavailable_model_fails_without_inference(fake_api):
+    fake_api.model_names = ("tazo-large",)
+    result = run_helper("verify.py", "--base-url", fake_api.base_url, "--models", "tazo-small")
+    assert result.returncode == 1, result.stdout + result.stderr
+    assert "tazo-small is missing or not ready" in result.stderr
+    assert not fake_api.uploads and not fake_api.audio_messages
+
+
 @pytest.mark.parametrize("mode", ["sync-manual-stream", "async-manual-stream"])
 @pytest.mark.parametrize("failure", ["wrong-range", "periodic-decision"])
 def test_manual_modes_reject_wrong_ranges_and_periodic_decisions(fake_api, mode, failure):

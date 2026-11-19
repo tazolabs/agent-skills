@@ -47,9 +47,11 @@ python /absolute/path/to/tazo/scripts/verify.py \
   --output ./tazo-verification.json
 ```
 
-This uses the bundled 1.27-second weather WAV and runs all four modes for
-`tazo-large` and `tazo-small`: eight cases, sequentially. A successful run prints
-`Summary: 8/8 passed`. It validates health/discovery, response IDs/options,
+This uses the bundled 1.27-second weather WAV and runs four modes for every
+discovered ready model supporting choice questions, sequentially. Production
+currently exposes `tazo-large`, so a successful default run prints
+`Summary: 4/4 passed`. A deployment with two suitable models runs eight cases.
+It validates health/discovery, response IDs/options,
 streaming final audio coverage, closure, and the expected choice. It submits
 real inference work. Do not run it automatically for every integration edit.
 Streaming cases explicitly select turn mode for full-recording coverage;
@@ -57,7 +59,7 @@ they do not use the SDK's default chunk mode.
 
 To check manual triggers as well, run with
 `--modes sync-manual-stream async-manual-stream`. This adds two optional modes
-per model; it does not change the default eight-case check. The manual checks
+per model; it does not change the default four modes per model. The manual checks
 also validate the final `input_audio_range` and reject periodic decisions.
 
 For a smaller or custom check:

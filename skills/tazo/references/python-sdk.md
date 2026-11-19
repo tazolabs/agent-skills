@@ -52,8 +52,9 @@ that an authenticated inference request will work.
 Choose a ready model and inspect `capabilities.question_types`, `max_questions`,
 `max_choice_options`, `requires_no_tool_choice`, `max_audio_seconds`, and
 `required_sample_rate_hz`. Do not infer capabilities from the model's name.
-The bundled verification targets `tazo-large` and `tazo-small`; general
-integrations should use current discovery results.
+The bundled verification discovers ready models supporting choice questions.
+Use current discovery results instead of assuming a model ID is available;
+production currently advertises `tazo-large`.
 Question-count limits are model-specific for uploads and streaming. Use the
 advertised `max_questions` rather than assuming every model accepts exactly one.
 
