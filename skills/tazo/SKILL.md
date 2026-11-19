@@ -7,7 +7,7 @@ description: >-
 license: Apache-2.0
 metadata:
   author: tazolabs
-  version: "1.1.0"
+  version: "1.1.1"
   sdk-version: "0.1.4"
   api-version: "v1"
 ---
@@ -95,8 +95,9 @@ python /absolute/path/to/tazo/scripts/verify.py --models tazo-large --expected-c
 `check_setup.py` checks the local installation, key presence, health, and model
 discovery without submitting audio. `--offline` checks only local prerequisites.
 `verify.py` uses the bundled weather recording by default and runs sync upload,
-sync streaming, async upload, and async streaming for both `tazo-large` and
-`tazo-small`. `--models tazo-large` limits it to four cases. `--modes sync-upload`
+sync streaming, async upload, and async streaming for ready models advertising
+choice support. It discovers models by default; production currently exposes
+`tazo-large`. `--models tazo-large` explicitly selects that model and four cases. `--modes sync-upload`
 limits it to one mode per selected model. `--help` lists all options, including
 custom audio, API origin, expected choice, and a JSON report.
 The helper explicitly uses turn mode to check final coverage of the full sample.

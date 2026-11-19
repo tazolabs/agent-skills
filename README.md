@@ -78,17 +78,19 @@ relative to their own location. Use `--help` for all options.
 With no key, it can still check health. `--offline` makes no network requests
 and reports a missing key as an incomplete setup.
 
-`verify.py` sends the bundled weather WAV through four modes for each of
-`tazo-large` and `tazo-small`. Expect `Summary: 8/8 passed` with a working
-service and the expected weather decision. Cases run sequentially and submit
-real inference work; streaming can evaluate multiple windows. Narrow a run:
+`verify.py` discovers ready models supporting choice questions and sends the
+bundled weather WAV through four modes for each. Production currently advertises
+`tazo-large`, so expect `Summary: 4/4 passed` there with the expected weather
+decision. A deployment advertising two suitable models runs eight cases. Cases
+run sequentially and submit real inference work; streaming can evaluate multiple
+windows. Narrow a run:
 
 ```sh
 python skills/tazo/scripts/verify.py \
   --models tazo-large --modes sync-upload --expected-choice get_weather
 ```
 
-Skill version **1.1.0** targets SDK **0.1.4**. The SDK now defaults to chunk
+Skill version **1.1.1** targets SDK **0.1.4**. The SDK now defaults to chunk
 streaming with no cumulative duration cap (`max_turn_audio_ms=None`). Choose
 `audio_scope="turn"` explicitly for a final decision over the whole recording;
 the verification helper does this. Numeric duration limits, message-size limits,
@@ -106,8 +108,10 @@ python skills/tazo/scripts/verify.py --models tazo-large \
 ```
 
 These two optional modes check committed sample bounds, absence of periodic
-decisions, and closure. The default verification remains eight cases. To test
-all six modes for both models (12 cases), pass all six names to `--modes`.
+decisions, and closure. The default verification remains four modes per
+discovered model. To test all six modes, pass all six names to `--modes`. Use
+`--models` to select
+specific models only when that deployment advertises them.
 
 For your own mono 16 kHz PCM16 WAV, use `--audio ./request.wav`. The helper's
 question always tests weather routing. Omit `--expected-choice` for a contract
@@ -193,7 +197,8 @@ npx skills@latest add . --list
 
 CI runs these checks with Python 3.11 and 3.14 and validates CLI discovery.
 Tests exercise the published `tazo-sdk==0.1.4` against a local public-API double,
-including all eight cases, semantic failures, missing/invalid keys, streaming
+including single-model production discovery, eight cases on a two-model API,
+semantic failures, missing/invalid keys, streaming
 disconnects, manual sample-range commits, periodic-event rejection, cleanup,
 and error redaction. They do not establish live model quality or provider
 availability. Before a release, run the live verification
@@ -211,7 +216,7 @@ npx skills@latest add /absolute/path/to/agent-skills --skill tazo --agent codex
 Keep the skill's `metadata.version` independent of the SDK version. When
 updating behavior, update that skill version, record the SDK version tested in
 `metadata.sdk-version`, run checks, and push reviewed changes to `main`.
-Optionally create a Git tag such as `v1.1.0` after the release checks pass.
+Optionally create a Git tag such as `v1.1.1` after the release checks pass.
 The normal install command works as soon as the files are on the public default
 branch; an npm account, npm token, and `npm publish` are unnecessary.
 The CLI compares source/content state when checking for changes; bumping the

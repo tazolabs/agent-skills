@@ -7,7 +7,7 @@ The skill and the Python SDK are separate installations:
 | Agent instructions, references, helpers, and sample | `tazolabs/agent-skills` on GitHub | `npx skills@latest update tazo` |
 | Python SDK used by application code | `tazo-sdk` on PyPI | The project's Python dependency manager |
 
-Skill **1.1.0** is tested with SDK **0.1.4**. Updating the skill does not install
+Skill **1.1.1** is tested with SDK **0.1.4**. Updating the skill does not install
 or upgrade a Python dependency. Updating the SDK does not replace an installed
 skill. Preserve the user's dependency and lockfile workflow.
 

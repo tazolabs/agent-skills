@@ -1,6 +1,6 @@
 [project]
 name = "tazo-agent-skills-dev"
-version = "1.1.0"
+version = "1.1.1"
 description = "Development checks for Tazo's portable agent skill."
 requires-python = ">=3.11"
 dependencies = []
