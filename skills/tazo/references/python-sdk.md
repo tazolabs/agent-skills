@@ -5,13 +5,13 @@ Use the existing project's environment and dependency manager. For a new project
 ```sh
 python3 -m venv .venv
 source .venv/bin/activate
-python -m pip install 'tazo-sdk==0.1.4'
+python -m pip install 'tazo-sdk==0.1.5'
 ```
 
 On Windows activate `.venv\Scripts\Activate.ps1`. Python 3.11+ is required.
 The package is `tazo-sdk`; the import is `tazo`. Reuse a compatible installed
 version rather than replacing a project's lockfile without reason.
-SDK 0.1.4 supports the current nullable streaming duration limit and defaults to
+SDK 0.1.5 is the tested release. It supports the nullable streaming duration limit and defaults to
 chunk mode. When upgrading an integration that needs whole-recording decisions,
 set `audio_scope="turn"` explicitly; see [streaming.md](streaming.md).
 Use SDK 0.1.4 or newer for manual streaming triggers. Upgrade an older project
@@ -57,6 +57,12 @@ Use current discovery results instead of assuming a model ID is available;
 production currently advertises `tazo-large`.
 Question-count limits are model-specific for uploads and streaming. Use the
 advertised `max_questions` rather than assuming every model accepts exactly one.
+Tazo Large currently advertises up to ten mixed `choice`/`noul` questions in
+both US and India production. See [multiple-questions.md](multiple-questions.md)
+for one upload/session with multiple typed answers. A null `max_audio_seconds`
+does not imply unlimited uploads: the SDK's 16 MiB upload cap and negotiated
+streaming limits still apply. Account text budgets are separate from model
+metadata and apply across the entire request.
 
 ## Choice decision: sync and async
 

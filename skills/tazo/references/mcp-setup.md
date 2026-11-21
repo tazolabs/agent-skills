@@ -123,12 +123,19 @@ with `tazo_decide_audio`, the user's state and questions, a ready model, and a
 new idempotency key retained for identical retries. Analysis consumes the
 signed-in account's Tazo credits.
 
+The same `questions` map can contain several questions, within the discovered
+model's count and type limits. Tazo Large currently supports up to ten mixed
+choice/noul questions. Send the shared audio once and report every answer ID;
+choice confidence and noul probability are different typed fields. Questions
+share state and audio, so use a later operation for a dependent follow-up.
+
 Claude web can analyze an `audio_id` already uploaded by the same Tazo account.
 A local path alone is not an upload. Use a file-capable client for a new local
 file; microphone capture needs the local Tazo companion.
 
 For WAV replay, `tazo_analyze_audio_stream` accepts mono 16 kHz PCM16 WAVs up to
-30 seconds. `evaluation_interval_ms=1000` requests decisions each second. Show
+30 seconds. `evaluation_interval_ms=1000` requests a one-second evaluation
+interval; inference speed can reduce the actual update frequency. Show
 the provisional timeline and the finalized whole-recording decision; live
 progress presentation depends on the client. Never replay a failed stream
 automatically. A selected action classifies intent; it does not execute it.

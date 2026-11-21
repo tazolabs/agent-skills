@@ -112,7 +112,7 @@ def test_all_eight_modes_use_installed_sdk_from_unrelated_directory(fake_api, tm
     )
     assert result.returncode == 0, result.stdout + result.stderr
     data = json.loads(report.read_text())
-    assert data["sdk_version"] == "0.1.4"
+    assert data["sdk_version"] == "0.1.5"
     assert data["passed"] == data["total"] == 8
     assert {(case["model"], case["mode"]) for case in data["results"]} == {
         (model, mode)

@@ -7,7 +7,8 @@ The skill and the Python SDK are separate installations:
 | Agent instructions, references, helpers, and sample | `tazolabs/agent-skills` on GitHub | `npx skills@latest update tazo` |
 | Python SDK used by application code | `tazo-sdk` on PyPI | The project's Python dependency manager |
 
-Skill **1.2.0** adds hosted MCP installation and is tested with SDK **0.1.4**.
+Skill **1.3.0** adds multiple-question guidance and is tested with SDK **0.1.5**.
+It retains native hosted MCP installation and sign-in.
 MCP installation uses Tazo browser sign-in; SDK/API-key setup below applies
 only to application development. Updating the skill does not install
 or upgrade a Python dependency. Updating the SDK does not replace an installed
@@ -29,7 +30,7 @@ license, and the audio asset. Reload the agent session after installing.
 For a new Python application environment, install the tested SDK:
 
 ```sh
-python -m pip install 'tazo-sdk==0.1.4'
+python -m pip install 'tazo-sdk==0.1.5'
 ```
 
 For an existing project, upgrade an older SDK through its dependency manager

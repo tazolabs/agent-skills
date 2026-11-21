@@ -4,6 +4,10 @@ Streaming uses the same `model`, `state`, and `questions` as uploaded decisions.
 Choose question types and counts from current model capabilities, including
 `max_questions`; the limit is model-specific. The SDK handles WebSocket
 authentication and protocol messages; use the public `decisions.stream()` interface.
+Every decision event contains all requested question IDs in `event.answers`.
+Iterate the complete map and branch on answer type; see
+[multiple-questions.md](multiple-questions.md). All questions share scope and
+timing, and one manual commit evaluates them all on the selected range.
 
 ## Audio and lifecycle
 
@@ -41,7 +45,7 @@ Omit `evaluation_interval_ms` for the server default, or use an integer from
 service feedback; do not hardcode account quotas.
 
 Between completed turns, `session.update(state=..., questions=...)` replaces
-both context and question. Consume `session.updated` before sending more audio.
+both context and the complete question map. Consume `session.updated` before sending more audio.
 A session's model stays fixed. Start a new session to change models.
 
 ## Manual evaluation and custom triggers (SDK 0.1.4+)
