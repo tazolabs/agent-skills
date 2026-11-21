@@ -3,12 +3,12 @@ name: tazo
 description: >-
   Install and sign in to Tazo-MCP in Claude or ZCode, use its audio decision
   tools, or build integrations with the Tazo Python SDK. Use for Tazo MCP setup,
-  uploaded audio decisions, streaming, model discovery, and verification.
+  uploaded audio decisions, multiple questions, streaming, model discovery, and verification.
 license: Apache-2.0
 metadata:
   author: tazolabs
-  version: "1.2.0"
-  sdk-version: "0.1.4"
+  version: "1.3.0"
+  sdk-version: "0.1.5"
   api-version: "v1"
 ---
 
@@ -59,6 +59,8 @@ prefer async streaming in an existing async application.
 Read [references/python-sdk.md](references/python-sdk.md) for installation,
 authentication, uploaded decisions, capabilities, and result handling. Read
 [references/streaming.md](references/streaming.md) when implementing streaming.
+Read [references/multiple-questions.md](references/multiple-questions.md) when
+several decisions use the same audio, including mixed choice/noul answers.
 Use [references/troubleshooting.md](references/troubleshooting.md) for errors,
 idempotency recovery, and verification failures.
 Read [references/updates.md](references/updates.md) when installing or updating
@@ -67,7 +69,7 @@ the skill, or when the user asks about automatic updates.
 ## Set up and discover
 
 - Use Python 3.11+ and the project's dependency manager or virtual environment.
-  The examples and helpers are tested with `tazo-sdk==0.1.4`.
+  The examples and helpers are tested with the published `tazo-sdk==0.1.5`.
 - Read the raw key from `TAZO_API_KEY`; the SDK adds `Bearer`. Keys are created
   by the user in the [Tazo console](https://app.tazolabs.com). If missing, have
   the user set it in their terminal or secret store. Do not request a key in chat,
@@ -87,6 +89,16 @@ Use `Tazo` or `AsyncTazo` as a context manager. For a decision, supply `state`
 the typed answer and useful request metadata; preserve the distinction between
 choice confidence and a `noul` probability. Model outputs are decisions, not
 transcripts or executions of tools named in the choices.
+
+For several independent decisions about the same audio, send one `questions`
+map in one upload or session, within the discovered `max_questions`. Production
+Tazo Large currently supports up to ten mixed `choice`/`noul` questions. Inspect
+every returned answer by question ID and type; do not read only `action` or
+assume every answer has `choice`. Questions share state, the audio window, and
+streaming evaluation timing. One manual commit evaluates all questions on its
+selected range. Use separate sessions for different scopes/timing, or a later
+request when a question depends on an earlier answer. Text budgets apply across
+all questions; adding questions does not multiply the audio usage charge.
 
 For streaming, send raw mono 16 kHz signed little-endian PCM16, consume events
 concurrently with sending, obey `session.ready` limits, and observe
@@ -128,6 +140,9 @@ The helper explicitly uses turn mode to check final coverage of the full sample.
 To check custom triggers, select `--modes sync-manual-stream async-manual-stream`.
 These additional modes check the returned source sample range and reject
 periodic decisions; the default four modes stay unchanged.
+These helpers ask one weather-routing question. For multiple-question
+verification, use the reference's mixed-question example and check every answer;
+a passing single-question helper run does not verify multiple-question behavior.
 
 Run the operations that satisfy the user's request. Use the full verification
 suite when the user asks to check all modes; each case submits real inference

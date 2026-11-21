@@ -76,7 +76,7 @@ The default target is `https://api.tazolabs.com`.
 In your Python 3.11+ environment:
 
 ```sh
-python -m pip install 'tazo-sdk==0.1.4'
+python -m pip install 'tazo-sdk==0.1.5'
 ```
 
 For a repository checkout, run from its root:
@@ -109,7 +109,14 @@ python skills/tazo/scripts/verify.py \
   --models tazo-large --modes sync-upload --expected-choice get_weather
 ```
 
-Skill version **1.2.0** targets SDK **0.1.4**. The SDK now defaults to chunk
+Skill version **1.3.0** is tested with published SDK **0.1.5** and teaches agents
+to ask up to ten mixed choice/noul questions in one upload or stream, subject to
+runtime discovery. See the [multiple-question reference](skills/tazo/references/multiple-questions.md)
+for sync/async examples, complete answer handling, shared text budgets, and
+manual commit semantics. The bundled verification helper still asks one weather
+question; use the reference for a multiple-question check.
+
+The SDK defaults to chunk
 streaming with no cumulative duration cap (`max_turn_audio_ms=None`). Choose
 `audio_scope="turn"` explicitly for a final decision over the whole recording;
 the verification helper does this. Numeric duration limits, message-size limits,
@@ -150,6 +157,7 @@ skills/tazo/
   SKILL.md                     Agent entrypoint and capability routing
   LICENSE                      License retained when the skill is installed
   references/python-sdk.md     Setup, sync/async uploads, typed results
+  references/multiple-questions.md Mixed questions, all answers, shared limits
   references/mcp-setup.md      Claude/ZCode installation, sign-in, native checks
   references/streaming.md      PCM format, concurrency, lifecycle, cleanup
   references/troubleshooting.md
@@ -218,11 +226,12 @@ npx skills@latest add . --list
 ```
 
 CI runs these checks with Python 3.11 and 3.14 and validates CLI discovery.
-Tests exercise the published `tazo-sdk==0.1.4` against a local public-API double,
+Tests exercise the published `tazo-sdk==0.1.5` against a local public-API double,
 including single-model production discovery, eight cases on a two-model API,
 semantic failures, missing/invalid keys, streaming
 disconnects, manual sample-range commits, periodic-event rejection, cleanup,
-and error redaction. They do not establish live model quality or provider
+error redaction, and executable mixed-question examples with capability guards.
+They do not establish live model quality or provider
 availability. Before a release, run the live verification
 with a dedicated key from your own terminal and review the report.
 
@@ -238,7 +247,7 @@ npx skills@latest add /absolute/path/to/agent-skills --skill tazo --agent codex
 Keep the skill's `metadata.version` independent of the SDK version. When
 updating behavior, update that skill version, record the SDK version tested in
 `metadata.sdk-version`, run checks, and push reviewed changes to `main`.
-Optionally create a Git tag such as `v1.2.0` after the release checks pass.
+Optionally create a Git tag such as `v1.3.0` after the release checks pass.
 The normal install command works as soon as the files are on the public default
 branch; an npm account, npm token, and `npm publish` are unnecessary.
 The CLI compares source/content state when checking for changes; bumping the
