@@ -1,13 +1,13 @@
 ---
 name: tazo
 description: >-
-  Build, run, and troubleshoot integrations with Tazo audio decision models using
-  the Tazo Python SDK. Use for Tazo setup, decisions from uploaded audio,
-  WebSocket streaming decisions, model discovery, and sync or async verification.
+  Install and sign in to Tazo-MCP in Claude or ZCode, use its audio decision
+  tools, or build integrations with the Tazo Python SDK. Use for Tazo MCP setup,
+  uploaded audio decisions, streaming, model discovery, and verification.
 license: Apache-2.0
 metadata:
   author: tazolabs
-  version: "1.1.1"
+  version: "1.2.0"
   sdk-version: "0.1.4"
   api-version: "v1"
 ---
@@ -15,7 +15,31 @@ metadata:
 # Tazo audio decisions
 
 Tazo uses audio plus text context and questions to return structured decisions.
-Use the public Python package `tazo-sdk` (import `tazo`). This skill covers only:
+
+## Choose the requested connection
+
+- **Install, connect, or sign in to the MCP:** use
+  [the MCP setup reference](references/mcp-setup.md). Production is
+  `https://mcp.tazolabs.com/mcp`, named **Tazo-MCP**, using Streamable HTTP.
+  Add the server for the requested client, let its native OAuth flow open Tazo
+  sign-in, then check health and models through that client's tools. Email,
+  Google, and existing platform sessions use the normal Tazo sign-in.
+  The user completes sign-in; the agent handles installation. Do not ask the
+  user to edit configuration or obtain an API key, client ID, or client secret.
+- **Use an already connected MCP:** discover models with its native tools.
+  Hosted audio tools take an account-owned `audio_id`; a file-capable agent can
+  prepare and upload a WAV before analysis. Read the MCP reference for that flow.
+- **Build application code with the SDK:** follow the SDK sections below.
+  SDK API-key setup and verification helpers apply to this mode only.
+
+Preserve a user-supplied endpoint and the selected application. Claude Code
+uses its CLI; Claude web/Desktop connectors use account settings; ZCode uses
+its MCP settings or the bundled agent installer. These are separate client
+registrations. A healthy HTTP endpoint alone is not a verified installation.
+
+## Python SDK integration
+
+Use the public Python package `tazo-sdk` (import `tazo`) for application code:
 
 | Operation | SDK call | Public API |
 | --- | --- | --- |

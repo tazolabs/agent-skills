@@ -1,9 +1,28 @@
 # Tazo agent skills
 
-Teach your coding agent to build and test integrations with Tazo audio decision
-models. The `tazo` skill uses the public [Tazo Python SDK](https://pypi.org/project/tazo-sdk/)
-for uploaded audio, WebSocket streaming, model discovery, and health checks.
-It supports synchronous and asynchronous applications.
+Teach your agent to install **Tazo-MCP**, sign in with your Tazo account, and
+use audio decision tools. The same skill supports application development with
+the public [Tazo Python SDK](https://pypi.org/project/tazo-sdk/).
+
+## Connect Tazo-MCP with a prompt
+
+Give your agent this request:
+
+> Install Tazo-MCP in this app using https://mcp.tazolabs.com/mcp.
+> Follow https://mcp.tazolabs.com/setup, handle installation for me, let me
+> complete Tazo sign-in, and verify health and available models. Do not submit
+> audio yet.
+
+The production MCP uses Streamable HTTP and normal Tazo sign-in, including
+email and Google. Its client registration is automatic. The user does not
+create API keys, supply OAuth client credentials, or edit settings files.
+The agent uses Claude Code's native CLI, Claude web/Desktop's connector UI,
+or the bundled ZCode installer. UI-only connectors need an agent that can
+operate those settings, or the short UI steps in the guide.
+
+See [MCP installation and verification](skills/tazo/references/mcp-setup.md).
+The public `/setup` guide also works when the skill is not installed. A 401
+before sign-in is the normal authorization challenge.
 
 ## Install in your project
 
@@ -46,8 +65,8 @@ so references, scripts, license, and audio remain available.
 > Use Tazo manual streaming to trigger decisions at VAD utterance boundaries.
 > Keep sending audio while inference runs and use absolute sample ranges.
 
-The agent can install the SDK and create integration code in your project. For
-live decisions, you need Python 3.11+, network access, and a Tazo API key from
+For the SDK workflow, the agent can install the SDK and create integration code
+in your project. This mode needs Python 3.11+, network access, and a Tazo API key from
 the [Tazo console](https://app.tazolabs.com). Configure the raw key as
 `TAZO_API_KEY` in your terminal or secret store; do not paste it into the chat.
 The default target is `https://api.tazolabs.com`.
@@ -90,7 +109,7 @@ python skills/tazo/scripts/verify.py \
   --models tazo-large --modes sync-upload --expected-choice get_weather
 ```
 
-Skill version **1.1.1** targets SDK **0.1.4**. The SDK now defaults to chunk
+Skill version **1.2.0** targets SDK **0.1.4**. The SDK now defaults to chunk
 streaming with no cumulative duration cap (`max_turn_audio_ms=None`). Choose
 `audio_scope="turn"` explicitly for a final decision over the whole recording;
 the verification helper does this. Numeric duration limits, message-size limits,
@@ -131,19 +150,22 @@ skills/tazo/
   SKILL.md                     Agent entrypoint and capability routing
   LICENSE                      License retained when the skill is installed
   references/python-sdk.md     Setup, sync/async uploads, typed results
+  references/mcp-setup.md      Claude/ZCode installation, sign-in, native checks
   references/streaming.md      PCM format, concurrency, lifecycle, cleanup
   references/troubleshooting.md
   references/updates.md        Skill/SDK updates and opt-in automation
   scripts/check_setup.py       Local prerequisites, health, and discovery
+  scripts/install_zcode_mcp.py Agent installation; preserves settings and backups
   scripts/verify.py            Four default modes plus two manual trigger modes
   scripts/_support.py          URL validation and credential redaction
   assets/weather.wav           Bundled weather-request recording
 tests/                         Local HTTP/WebSocket tests; no live key needed
 ```
 
-The skill covers only `POST /v1/decisions`, WebSocket `/v1/decisions/stream`,
-`GET /v1/models`, and `GET /healthz`. Account/key administration uses the
-console. Tazo returns decisions; it does not execute tools named in a choice.
+The SDK workflow covers `POST /v1/decisions`, WebSocket `/v1/decisions/stream`,
+`GET /v1/models`, and `GET /healthz`. The MCP workflow adds client installation,
+browser sign-in, and the hosted audio tools. Account/key administration uses
+the console. Tazo returns decisions; it does not execute tools named in a choice.
 
 The sample says “What is the weather today?”. It was synthesized with macOS
 `say` and converted to uncompressed mono 16 kHz PCM16 WAV. The verification
@@ -216,7 +238,7 @@ npx skills@latest add /absolute/path/to/agent-skills --skill tazo --agent codex
 Keep the skill's `metadata.version` independent of the SDK version. When
 updating behavior, update that skill version, record the SDK version tested in
 `metadata.sdk-version`, run checks, and push reviewed changes to `main`.
-Optionally create a Git tag such as `v1.1.1` after the release checks pass.
+Optionally create a Git tag such as `v1.2.0` after the release checks pass.
 The normal install command works as soon as the files are on the public default
 branch; an npm account, npm token, and `npm publish` are unnecessary.
 The CLI compares source/content state when checking for changes; bumping the
@@ -226,11 +248,11 @@ receive it through their own opt-in automation.
 
 ## Link from Mintlify
 
-Add a page such as `guides/agent-skill.mdx` to the customer documentation, add
-it to the navigation in `docs.json`, and show the install command above along
-with Python/key prerequisites, example prompts, and a link to this repository.
-Use the documentation's preview/build checks before deploying. Updating this
-repository does not deploy the separate Mintlify site.
+The customer docs have separate `guides/agent-skill` and `guides/mcp` pages.
+Keep MCP browser sign-in separate from the Python/API-key prerequisites for
+SDK application code. The MCP origin's `/setup` guide is also discoverable
+before authentication. Use each site's preview/build checks before deploying;
+updating this repository does not deploy the separate Mintlify or MCP sites.
 
 The [skills.sh FAQ](https://skills.sh/docs/faq) describes automatic directory
 discovery through eligible CLI installation telemetry. Installing from GitHub
